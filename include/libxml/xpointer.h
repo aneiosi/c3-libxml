@@ -25,28 +25,23 @@
 
 #ifdef LIBXML_XPTR_ENABLED
 
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
+	#include <libxml/tree.h>
+	#include <libxml/xpath.h>
 
-#ifdef __cplusplus
+	#ifdef __cplusplus
 extern "C" {
-#endif
+	#endif
 
-/*
- * Functions.
- */
-XML_DEPRECATED
-XMLPUBFUN xmlXPathContext *
-		    xmlXPtrNewContext		(xmlDoc *doc,
-						 xmlNode *here,
-						 xmlNode *origin);
-XMLPUBFUN xmlXPathObject *
-		    xmlXPtrEval			(const xmlChar *str,
-						 xmlXPathContext *ctx);
+	/*
+	 * Functions.
+	 */
+	XML_DEPRECATED
+	XMLPUBFUN xmlXPathContext* xmlXPtrNewContext(xmlDoc* doc, xmlNode* here, xmlNode* origin);
+	XMLPUBFUN xmlXPathObject*  xmlXPtrEval(const xmlChar* str, xmlXPathContext* ctx);
 
-#ifdef __cplusplus
+	#ifdef __cplusplus
 }
-#endif
+	#endif
 
 #endif /* LIBXML_XPTR_ENABLED */
 #endif /* __XML_XPTR_H__ */

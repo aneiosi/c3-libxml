@@ -1,8 +1,8 @@
 /**
  * @file
- * 
+ *
  * @brief interface for all global variables of the library
- * 
+ *
  * Deprecated, don't use
  *
  * @copyright See Copyright for the status of this software.
@@ -20,9 +20,9 @@
  */
 #include <libxml/HTMLparser.h>
 #include <libxml/parser.h>
+#include <libxml/threads.h>
 #include <libxml/xmlerror.h>
 #include <libxml/xmlIO.h>
 #include <libxml/xmlsave.h>
-#include <libxml/threads.h>
 
 #endif /* __XML_GLOBALS_H */
