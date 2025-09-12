@@ -566,12 +566,12 @@ config_cmake.set10('WITH_MODULES', want_modules)
 config_cmake.set10('WITH_THREADS', want_threads)
 config_cmake.set10('WITH_ZLIB', want_zlib)
 config_cmake.set('XML_CFLAGS', xml_cflags)
-configure_file(
-	input: 'libxml2-config.cmake.in',
-	output: 'libxml2-config.cmake',
-	configuration: config_cmake,
-	install_dir: dir_lib / 'cmake' / meson.project_name(),
-)
+# configure_file(
+# 	input: 'libxml2-config.cmake.in',
+# 	output: 'libxml2-config.cmake',
+# 	configuration: config_cmake,
+# 	install_dir: dir_lib / 'cmake' / meson.project_name(),
+# )
 
 ## xml2-config script
 
