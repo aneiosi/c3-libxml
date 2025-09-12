@@ -1,6 +1,0 @@
-{
-	"defaultCompiler": "ldc",
-	"defaultEnvironments": {
-		"LOG_LEVEL": "INFO"
-	}
-}

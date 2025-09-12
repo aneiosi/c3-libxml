@@ -359,12 +359,13 @@ configure_file(output: 'config.h', configuration: config_h)
 
 ## libxml2 library
 
-xml_src = [
+core_dir = 'src/c/core/'
+xml_core_src = [
 	'buf.c',
 	'chvalid.c',
 	'dict.c',
-	'entities.c',
 	'encoding.c',
+	'entities.c',
 	'error.c',
 	'globals.c',
 	'hash.c',
@@ -380,6 +381,10 @@ xml_src = [
 	'xmlmemory.c',
 	'xmlstring.c',
 ]
+xml_src = []
+foreach file : xml_core_src
+	xml_src += core_dir + file
+endforeach
 
 xml_opt_src = [
 	[want_c14n, ['c14n.c']],
@@ -401,17 +406,12 @@ xml_opt_src = [
 	[want_xptr, ['xlink.c', 'xpointer.c']],
 ]
 
-foreach file : xml_opt_src
-	want = file[0]
-	src = file[1]
-	if want == true
-		if src.length() > 1
-			foreach s : src
-				xml_src += s
-			endforeach
-		else
-			xml_src += src
-		endif
+opt_dir = 'src/c/opt/'
+foreach option : xml_opt_src
+	if option[0] == true
+		foreach file : option[1]
+			xml_src += opt_dir + file
+		endforeach
 	endif
 endforeach
 
@@ -439,9 +439,14 @@ meson.override_dependency('libxml-2.0', xml_dep)
 
 ## xmllint tool
 
+util_dir = 'src/c/util/'
+lint_src = []
+foreach file : ['lintmain.c', 'shell.c', 'xmllint.c']
+	lint_src += util_dir + 'xmllint/' + file
+endforeach
 xmllint = executable(
 	'xmllint',
-	files('lintmain.c', 'shell.c', 'xmllint.c'),
+	files(lint_src),
 	dependencies: [xml_dep, xmllint_deps],
 	include_directories: config_dir,
 	install: true,
@@ -452,7 +457,7 @@ xmllint = executable(
 if want_catalog and want_output
 	xmlcatalog = executable(
 		'xmlcatalog',
-		files('xmlcatalog.c'),
+		files(util_dir + 'xmlcatalog.c'),
 		dependencies: [xml_dep, xmllint_deps],
 		include_directories: config_dir,
 		install: true,
@@ -460,17 +465,16 @@ if want_catalog and want_output
 endif
 
 ## testdso module
-
+check_dir = 'src/c/check/'
 testdso_mod = shared_module(
 	'testdso',
-	files('testdso.c'),
+	files(check_dir + 'testdso.c'),
 	build_rpath: get_option('libdir'),
 	include_directories: config_dir,
 	name_prefix: '',
 )
 
 ## tests
-
 checks = {
 	'runsuite': [],
 	'runtest': threads_dep,
@@ -488,7 +492,7 @@ checks = {
 foreach check, deps : checks
 	exe = executable(
 		check,
-		files(check + '.c'),
+		files(check_dir + check + '.c'),
 		dependencies: [deps, xml_dep],
 		include_directories: config_dir,
 	)
@@ -549,40 +553,16 @@ pkgmod.generate(
 	variables: 'modules=' + want_modules.to_string('1', '0'),
 )
 
-## libxml2-config.cmake file
-
-config_cmake = configuration_data()
-config_cmake.set('LIBXML_MAJOR_VERSION', v_maj)
-config_cmake.set('LIBXML_MINOR_VERSION', v_min)
-config_cmake.set('LIBXML_MICRO_VERSION', v_mic)
-config_cmake.set('INSTALL_BINDIR', dir_bin)
-config_cmake.set('INSTALL_INCLUDEDIR', dir_include)
-config_cmake.set('INSTALL_LIBDIR', dir_lib)
-config_cmake.set('VERSION', meson.project_version())
-config_cmake.set10('BUILD_SHARED_LIBS', get_option('default_library') != 'static')
-config_cmake.set10('WITH_ICONV', want_iconv)
-config_cmake.set10('WITH_ICU', want_icu)
-config_cmake.set10('WITH_MODULES', want_modules)
-config_cmake.set10('WITH_THREADS', want_threads)
-config_cmake.set10('WITH_ZLIB', want_zlib)
-config_cmake.set('XML_CFLAGS', xml_cflags)
-# configure_file(
-# 	input: 'libxml2-config.cmake.in',
-# 	output: 'libxml2-config.cmake',
-# 	configuration: config_cmake,
-# 	install_dir: dir_lib / 'cmake' / meson.project_name(),
-# )
-
 ## xml2-config script
 
 install_data(
-	'xml2-config-meson',
+	'config/xml2-config-meson',
 	install_dir: dir_bin,
 	install_mode: 'rwxr-xr-x',
 	rename: 'xml2-config',
 )
 
-# summary
+## summary
 
 summary(
 	{
