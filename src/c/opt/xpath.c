@@ -15,7 +15,7 @@
 
 /* To avoid EBCDIC trouble when parsing on zOS */
 #if defined(__MVS__)
-#pragma convert("ISO8859-1")
+	#pragma convert("ISO8859-1")
 #endif
 
 #define IN_LIBXML
@@ -35,12 +35,12 @@
 #include <libxml/parserInternals.h>
 #include <libxml/hash.h>
 #ifdef LIBXML_DEBUG_ENABLED
-#include <libxml/debugXML.h>
+	#include <libxml/debugXML.h>
 #endif
 #include <libxml/xmlerror.h>
 #include <libxml/threads.h>
 #ifdef LIBXML_PATTERN_ENABLED
-#include <libxml/pattern.h>
+	#include <libxml/pattern.h>
 #endif
 
 #include "private/buf.h"
@@ -52,7 +52,7 @@
 /* Disabled for now */
 #if 0
 #ifdef LIBXML_PATTERN_ENABLED
-#define XPATH_STREAMING
+	#define XPATH_STREAMING
 #endif
 #endif
 
@@ -109,12 +109,12 @@
  * expressions
  */
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-#define XPATH_MAX_RECURSION_DEPTH 500
+	#define XPATH_MAX_RECURSION_DEPTH 500
 #elif defined(_WIN32)
-/* Windows typically limits stack size to 1MB. */
-#define XPATH_MAX_RECURSION_DEPTH 1000
+	/* Windows typically limits stack size to 1MB. */
+	#define XPATH_MAX_RECURSION_DEPTH 1000
 #else
-#define XPATH_MAX_RECURSION_DEPTH 5000
+	#define XPATH_MAX_RECURSION_DEPTH 5000
 #endif
 
 /*
@@ -172,14 +172,6 @@ static unsigned char xmlXPathSFHash[SF_HASH_SIZE];
 double xmlXPathNAN = 0.0;
 double xmlXPathPINF = 0.0;
 double xmlXPathNINF = 0.0;
-
-/**
- * @deprecated Alias for #xmlInitParser.
- */
-void
-xmlXPathInit(void) {
-    xmlInitParser();
-}
 
 ATTRIBUTE_NO_SANITIZE_INTEGER
 static unsigned
@@ -11959,64 +11951,6 @@ xmlXPathCompiledEvalToBoolean(xmlXPathCompExpr *comp,
 }
 
 /**
- * Parse and evaluate an XPath expression in the given context,
- * then push the result on the context stack
- *
- * @deprecated Internal function, don't use.
- *
- * @param ctxt  the XPath Parser context
- */
-void
-xmlXPathEvalExpr(xmlXPathParserContext *ctxt) {
-#ifdef XPATH_STREAMING
-    xmlXPathCompExprPtr comp;
-#endif
-    int oldDepth = 0;
-
-    if ((ctxt == NULL) || (ctxt->context == NULL))
-        return;
-    if (ctxt->context->lastError.code != 0)
-        return;
-
-#ifdef XPATH_STREAMING
-    comp = xmlXPathTryStreamCompile(ctxt->context, ctxt->base);
-    if ((comp == NULL) &&
-        (ctxt->context->lastError.code == XML_ERR_NO_MEMORY)) {
-        xmlXPathPErrMemory(ctxt);
-        return;
-    }
-    if (comp != NULL) {
-        if (ctxt->comp != NULL)
-	    xmlXPathFreeCompExpr(ctxt->comp);
-        ctxt->comp = comp;
-    } else
-#endif
-    {
-        if (ctxt->context != NULL)
-            oldDepth = ctxt->context->depth;
-	xmlXPathCompileExpr(ctxt, 1);
-        if (ctxt->context != NULL)
-            ctxt->context->depth = oldDepth;
-        CHECK_ERROR;
-
-        /* Check for trailing characters. */
-        if (*ctxt->cur != 0)
-            XP_ERROR(XPATH_EXPR_ERROR);
-
-	if ((ctxt->comp->nbStep > 1) && (ctxt->comp->last >= 0)) {
-            if (ctxt->context != NULL)
-                oldDepth = ctxt->context->depth;
-	    xmlXPathOptimizeExpression(ctxt,
-		&ctxt->comp->steps[ctxt->comp->last]);
-            if (ctxt->context != NULL)
-                ctxt->context->depth = oldDepth;
-        }
-    }
-
-    xmlXPathRunEval(ctxt, 0);
-}
-
-/**
  * Evaluate the XPath Location Path in the given context.
  *
  * @param str  the XPath expression
@@ -12104,18 +12038,6 @@ xmlXPathNodeEval(xmlNode *node, const xmlChar *str, xmlXPathContext *ctx) {
 xmlXPathObject *
 xmlXPathEvalExpression(const xmlChar *str, xmlXPathContext *ctxt) {
     return(xmlXPathEval(str, ctxt));
-}
-
-/**
- * Registers all default XPath functions in this context
- *
- * @deprecated No-op since 2.14.0.
- *
- * @param ctxt  the XPath context
- */
-void
-xmlXPathRegisterAllFunctions(xmlXPathContext *ctxt ATTRIBUTE_UNUSED)
-{
 }
 
 #endif /* LIBXML_XPATH_ENABLED */

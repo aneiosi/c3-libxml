@@ -14,7 +14,7 @@
 #ifndef __XML_LINK_INCLUDE__
 #define __XML_LINK_INCLUDE__
 
-#include <libxml/xmlversion.h>
+#include <libxml/xmlexports.h>
 
 #ifdef __cplusplus
 extern "C" {

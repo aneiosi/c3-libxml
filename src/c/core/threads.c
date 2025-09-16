@@ -7,32 +7,31 @@
  */
 
 #define IN_LIBXML
+#include <libxml/threads.h>
+
 #include "libxml.h"
 
-#include <string.h>
+#include <libxml/parser.h>
 #include <stdarg.h>
 #include <stdlib.h>
-
-#include <libxml/threads.h>
-#include <libxml/parser.h>
+#include <string.h>
 #ifdef LIBXML_CATALOG_ENABLED
-#include <libxml/catalog.h>
+	#include <libxml/catalog.h>
 #endif
 #ifdef LIBXML_RELAXNG_ENABLED
-#include <libxml/relaxng.h>
+	#include <libxml/relaxng.h>
 #endif
 #ifdef LIBXML_SCHEMAS_ENABLED
-#include <libxml/xmlschemastypes.h>
+	#include <libxml/xmlschemastypes.h>
 #endif
 
 #if defined(SOLARIS)
-#include <note.h>
+	#include <note.h>
 #endif
 
 #include "private/cata.h"
 #include "private/dict.h"
 #include "private/enc.h"
-#include "private/error.h"
 #include "private/globals.h"
 #include "private/io.h"
 #include "private/memory.h"
@@ -52,15 +51,13 @@ static xmlRMutex xmlLibraryLock;
  *
  * @param mutex  the mutex
  */
-void
-xmlInitMutex(xmlMutex *mutex)
-{
+void             xmlInitMutex(xmlMutex* mutex) {
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_init(&mutex->lock, NULL);
+	pthread_mutex_init(&mutex->lock, NULL);
 #elif defined HAVE_WIN32_THREADS
-    InitializeCriticalSection(&mutex->cs);
+	InitializeCriticalSection(&mutex->cs);
 #else
-    (void) mutex;
+	(void)mutex;
 #endif
 }
 
@@ -70,16 +67,15 @@ xmlInitMutex(xmlMutex *mutex)
  *
  * @returns a new simple mutex pointer or NULL in case of error
  */
-xmlMutex *
-xmlNewMutex(void)
-{
-    xmlMutexPtr tok;
+xmlMutex* xmlNewMutex(void) {
+	xmlMutexPtr tok;
 
-    tok = malloc(sizeof(xmlMutex));
-    if (tok == NULL)
-        return (NULL);
-    xmlInitMutex(tok);
-    return (tok);
+	tok = malloc(sizeof(xmlMutex));
+	if (tok == NULL) {
+		return (NULL);
+	}
+	xmlInitMutex(tok);
+	return (tok);
 }
 
 /**
@@ -87,15 +83,13 @@ xmlNewMutex(void)
  *
  * @param mutex  the simple mutex
  */
-void
-xmlCleanupMutex(xmlMutex *mutex)
-{
+void xmlCleanupMutex(xmlMutex* mutex) {
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_destroy(&mutex->lock);
+	pthread_mutex_destroy(&mutex->lock);
 #elif defined HAVE_WIN32_THREADS
-    DeleteCriticalSection(&mutex->cs);
+	DeleteCriticalSection(&mutex->cs);
 #else
-    (void) mutex;
+	(void)mutex;
 #endif
 }
 
@@ -104,14 +98,13 @@ xmlCleanupMutex(xmlMutex *mutex)
  *
  * @param tok  the simple mutex
  */
-void
-xmlFreeMutex(xmlMutex *tok)
-{
-    if (tok == NULL)
-        return;
+void xmlFreeMutex(xmlMutex* tok) {
+	if (tok == NULL) {
+		return;
+	}
 
-    xmlCleanupMutex(tok);
-    free(tok);
+	xmlCleanupMutex(tok);
+	free(tok);
 }
 
 /**
@@ -119,21 +112,19 @@ xmlFreeMutex(xmlMutex *tok)
  *
  * @param tok  the simple mutex
  */
-void
-xmlMutexLock(xmlMutex *tok)
-{
-    if (tok == NULL)
-        return;
+void xmlMutexLock(xmlMutex* tok) {
+	if (tok == NULL) {
+		return;
+	}
 #ifdef HAVE_POSIX_THREADS
-    /*
-     * This assumes that __libc_single_threaded won't change while the
-     * lock is held.
-     */
-    pthread_mutex_lock(&tok->lock);
+	/*
+	 * This assumes that __libc_single_threaded won't change while the
+	 * lock is held.
+	 */
+	pthread_mutex_lock(&tok->lock);
 #elif defined HAVE_WIN32_THREADS
-    EnterCriticalSection(&tok->cs);
+	EnterCriticalSection(&tok->cs);
 #endif
-
 }
 
 /**
@@ -141,15 +132,14 @@ xmlMutexLock(xmlMutex *tok)
  *
  * @param tok  the simple mutex
  */
-void
-xmlMutexUnlock(xmlMutex *tok)
-{
-    if (tok == NULL)
-        return;
+void xmlMutexUnlock(xmlMutex* tok) {
+	if (tok == NULL) {
+		return;
+	}
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_unlock(&tok->lock);
+	pthread_mutex_unlock(&tok->lock);
 #elif defined HAVE_WIN32_THREADS
-    LeaveCriticalSection(&tok->cs);
+	LeaveCriticalSection(&tok->cs);
 #endif
 }
 
@@ -158,17 +148,16 @@ xmlMutexUnlock(xmlMutex *tok)
  *
  * @param tok  mutex
  */
-void
-xmlInitRMutex(xmlRMutex *tok) {
-    (void) tok;
+void xmlInitRMutex(xmlRMutex* tok) {
+	(void)tok;
 
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_init(&tok->lock, NULL);
-    tok->held = 0;
-    tok->waiters = 0;
-    pthread_cond_init(&tok->cv, NULL);
+	pthread_mutex_init(&tok->lock, NULL);
+	tok->held    = 0;
+	tok->waiters = 0;
+	pthread_cond_init(&tok->cv, NULL);
 #elif defined HAVE_WIN32_THREADS
-    InitializeCriticalSection(&tok->cs);
+	InitializeCriticalSection(&tok->cs);
 #endif
 }
 
@@ -180,16 +169,15 @@ xmlInitRMutex(xmlRMutex *tok) {
  *
  * @returns the new reentrant mutex pointer or NULL in case of error
  */
-xmlRMutex *
-xmlNewRMutex(void)
-{
-    xmlRMutexPtr tok;
+xmlRMutex* xmlNewRMutex(void) {
+	xmlRMutexPtr tok;
 
-    tok = malloc(sizeof(xmlRMutex));
-    if (tok == NULL)
-        return (NULL);
-    xmlInitRMutex(tok);
-    return (tok);
+	tok = malloc(sizeof(xmlRMutex));
+	if (tok == NULL) {
+		return (NULL);
+	}
+	xmlInitRMutex(tok);
+	return (tok);
 }
 
 /**
@@ -197,15 +185,14 @@ xmlNewRMutex(void)
  *
  * @param tok  mutex
  */
-void
-xmlCleanupRMutex(xmlRMutex *tok) {
-    (void) tok;
+void xmlCleanupRMutex(xmlRMutex* tok) {
+	(void)tok;
 
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_destroy(&tok->lock);
-    pthread_cond_destroy(&tok->cv);
+	pthread_mutex_destroy(&tok->lock);
+	pthread_cond_destroy(&tok->cv);
 #elif defined HAVE_WIN32_THREADS
-    DeleteCriticalSection(&tok->cs);
+	DeleteCriticalSection(&tok->cs);
 #endif
 }
 
@@ -215,13 +202,12 @@ xmlCleanupRMutex(xmlRMutex *tok) {
  *
  * @param tok  the reentrant mutex
  */
-void
-xmlFreeRMutex(xmlRMutex *tok)
-{
-    if (tok == NULL)
-        return;
-    xmlCleanupRMutex(tok);
-    free(tok);
+void xmlFreeRMutex(xmlRMutex* tok) {
+	if (tok == NULL) {
+		return;
+	}
+	xmlCleanupRMutex(tok);
+	free(tok);
 }
 
 /**
@@ -229,30 +215,30 @@ xmlFreeRMutex(xmlRMutex *tok)
  *
  * @param tok  the reentrant mutex
  */
-void
-xmlRMutexLock(xmlRMutex *tok)
-{
-    if (tok == NULL)
-        return;
+void xmlRMutexLock(xmlRMutex* tok) {
+	if (tok == NULL) {
+		return;
+	}
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_lock(&tok->lock);
-    if (tok->held) {
-        if (pthread_equal(tok->tid, pthread_self())) {
-            tok->held++;
-            pthread_mutex_unlock(&tok->lock);
-            return;
-        } else {
-            tok->waiters++;
-            while (tok->held)
-                pthread_cond_wait(&tok->cv, &tok->lock);
-            tok->waiters--;
-        }
-    }
-    tok->tid = pthread_self();
-    tok->held = 1;
-    pthread_mutex_unlock(&tok->lock);
+	pthread_mutex_lock(&tok->lock);
+	if (tok->held) {
+		if (pthread_equal(tok->tid, pthread_self())) {
+			tok->held++;
+			pthread_mutex_unlock(&tok->lock);
+			return;
+		} else {
+			tok->waiters++;
+			while (tok->held) {
+				pthread_cond_wait(&tok->cv, &tok->lock);
+			}
+			tok->waiters--;
+		}
+	}
+	tok->tid  = pthread_self();
+	tok->held = 1;
+	pthread_mutex_unlock(&tok->lock);
 #elif defined HAVE_WIN32_THREADS
-    EnterCriticalSection(&tok->cs);
+	EnterCriticalSection(&tok->cs);
 #endif
 }
 
@@ -261,22 +247,22 @@ xmlRMutexLock(xmlRMutex *tok)
  *
  * @param tok  the reentrant mutex
  */
-void
-xmlRMutexUnlock(xmlRMutex *tok ATTRIBUTE_UNUSED)
-{
-    if (tok == NULL)
-        return;
+void xmlRMutexUnlock(xmlRMutex* tok ATTRIBUTE_UNUSED) {
+	if (tok == NULL) {
+		return;
+	}
 #ifdef HAVE_POSIX_THREADS
-    pthread_mutex_lock(&tok->lock);
-    tok->held--;
-    if (tok->held == 0) {
-        if (tok->waiters)
-            pthread_cond_signal(&tok->cv);
-        memset(&tok->tid, 0, sizeof(tok->tid));
-    }
-    pthread_mutex_unlock(&tok->lock);
+	pthread_mutex_lock(&tok->lock);
+	tok->held--;
+	if (tok->held == 0) {
+		if (tok->waiters) {
+			pthread_cond_signal(&tok->cv);
+		}
+		memset(&tok->tid, 0, sizeof(tok->tid));
+	}
+	pthread_mutex_unlock(&tok->lock);
 #elif defined HAVE_WIN32_THREADS
-    LeaveCriticalSection(&tok->cs);
+	LeaveCriticalSection(&tok->cs);
 #endif
 }
 
@@ -290,29 +276,23 @@ xmlRMutexUnlock(xmlRMutex *tok ATTRIBUTE_UNUSED)
  * #xmlLockLibrary is used to take out a re-entrant lock on the libxml2
  * library.
  */
-void
-xmlLockLibrary(void)
-{
-    xmlRMutexLock(&xmlLibraryLock);
+void xmlLockLibrary(void) {
+	xmlRMutexLock(&xmlLibraryLock);
 }
 
 /**
  * #xmlUnlockLibrary is used to release a re-entrant lock on the libxml2
  * library.
  */
-void
-xmlUnlockLibrary(void)
-{
-    xmlRMutexUnlock(&xmlLibraryLock);
+void xmlUnlockLibrary(void) {
+	xmlRMutexUnlock(&xmlLibraryLock);
 }
 
 /**
  * @deprecated Alias for #xmlInitParser.
  */
-void
-xmlInitThreads(void)
-{
-    xmlInitParser();
+void xmlInitThreads(void) {
+	xmlInitParser();
 }
 
 /**
@@ -321,19 +301,14 @@ xmlInitThreads(void)
  * should be only called once at program exit. In most cases, you don't
  * have call cleanup functions at all.
  */
-void
-xmlCleanupThreads(void)
-{
+void        xmlCleanupThreads(void) {}
+
+static void xmlInitThreadsInternal(void) {
+	xmlInitRMutex(&xmlLibraryLock);
 }
 
-static void
-xmlInitThreadsInternal(void) {
-    xmlInitRMutex(&xmlLibraryLock);
-}
-
-static void
-xmlCleanupThreadsInternal(void) {
-    xmlCleanupRMutex(&xmlLibraryLock);
+static void xmlCleanupThreadsInternal(void) {
+	xmlCleanupRMutex(&xmlLibraryLock);
 }
 
 /************************************************************************
@@ -352,41 +327,41 @@ static INIT_ONCE onceControl = INIT_ONCE_STATIC_INIT;
 static int onceControl = 0;
 #endif
 
-static void
-xmlInitParserInternal(void) {
-    /*
-     * Note that the initialization code must not make memory allocations.
-     */
-    xmlInitRandom(); /* Required by xmlInitGlobalsInternal */
-    xmlInitMemoryInternal();
-    xmlInitThreadsInternal();
-    xmlInitGlobalsInternal();
-    xmlInitDictInternal();
-    xmlInitEncodingInternal();
+static void xmlInitParserInternal(void) {
+	/*
+	 * Note that the initialization code must not make memory allocations.
+	 */
+	xmlInitRandom(); /* Required by xmlInitGlobalsInternal */
+	xmlInitMemoryInternal();
+	xmlInitThreadsInternal();
+	xmlInitGlobalsInternal();
+	xmlInitDictInternal();
+	xmlInitEncodingInternal();
 #if defined(LIBXML_XPATH_ENABLED)
-    xmlInitXPathInternal();
+	xmlInitXPathInternal();
 #endif
-    xmlInitIOCallbacks();
+	xmlInitIOCallbacks();
 #ifdef LIBXML_CATALOG_ENABLED
-    xmlInitCatalogInternal();
+	xmlInitCatalogInternal();
 #endif
 #ifdef LIBXML_SCHEMAS_ENABLED
-    xmlInitSchemasTypesInternal();
+	xmlInitSchemasTypesInternal();
 #endif
 #ifdef LIBXML_RELAXNG_ENABLED
-    xmlInitRelaxNGInternal();
+	xmlInitRelaxNGInternal();
 #endif
 
-    xmlParserInitialized = 1;
+	xmlParserInitialized = 1;
 }
 
 #if defined(HAVE_WIN32_THREADS)
-static BOOL WINAPI
-xmlInitParserWinWrapper(INIT_ONCE *initOnce ATTRIBUTE_UNUSED,
-                        void *parameter ATTRIBUTE_UNUSED,
-                        void **context ATTRIBUTE_UNUSED) {
-    xmlInitParserInternal();
-    return(TRUE);
+static BOOL WINAPI xmlInitParserWinWrapper(
+	INIT_ONCE* initOnce ATTRIBUTE_UNUSED,
+	void* parameter     ATTRIBUTE_UNUSED,
+	void** context      ATTRIBUTE_UNUSED
+) {
+	xmlInitParserInternal();
+	return (TRUE);
 }
 #endif
 
@@ -400,17 +375,16 @@ xmlInitParserWinWrapper(INIT_ONCE *initOnce ATTRIBUTE_UNUSED,
  * Since 2.14.0, there's no distinction between threads. It should
  * be unnecessary to call this function.
  */
-void
-xmlInitParser(void) {
+void xmlInitParser(void) {
 #ifdef HAVE_POSIX_THREADS
-    pthread_once(&onceControl, xmlInitParserInternal);
+	pthread_once(&onceControl, xmlInitParserInternal);
 #elif defined(HAVE_WIN32_THREADS)
-    InitOnceExecuteOnce(&onceControl, xmlInitParserWinWrapper, NULL, NULL);
+	InitOnceExecuteOnce(&onceControl, xmlInitParserWinWrapper, NULL, NULL);
 #else
-    if (onceControl == 0) {
-        xmlInitParserInternal();
-        onceControl = 1;
-    }
+	if (onceControl == 0) {
+		xmlInitParserInternal();
+		onceControl = 1;
+	}
 #endif
 }
 
@@ -439,80 +413,77 @@ xmlInitParser(void) {
  * before the whole process exits.* Calling this function too early
  * will lead to memory corruption.
  */
-void
-xmlCleanupParser(void) {
-    /*
-     * Unfortunately, some users call this function to fix memory
-     * leaks on unload with versions before 2.9.11. This can result
-     * in the library being reinitialized, so this use case must
-     * be supported.
-     */
-    if (!xmlParserInitialized)
-        return;
+void xmlCleanupParser(void) {
+	/*
+	 * Unfortunately, some users call this function to fix memory
+	 * leaks on unload with versions before 2.9.11. This can result
+	 * in the library being reinitialized, so this use case must
+	 * be supported.
+	 */
+	if (!xmlParserInitialized) {
+		return;
+	}
 
-    xmlCleanupCharEncodingHandlers();
+	xmlCleanupCharEncodingHandlers();
 #ifdef LIBXML_CATALOG_ENABLED
-    xmlCatalogCleanup();
-    xmlCleanupCatalogInternal();
+	xmlCatalogCleanup();
+	xmlCleanupCatalogInternal();
 #endif
 #ifdef LIBXML_SCHEMAS_ENABLED
-    xmlSchemaCleanupTypes();
+	xmlSchemaCleanupTypes();
 #endif
 #ifdef LIBXML_RELAXNG_ENABLED
-    xmlRelaxNGCleanupTypes();
+	xmlRelaxNGCleanupTypes();
 #endif
 
 #ifdef LIBXML_SCHEMAS_ENABLED
-    /* Must be after xmlRelaxNGCleanupTypes */
-    xmlCleanupSchemasTypesInternal();
+	/* Must be after xmlRelaxNGCleanupTypes */
+	xmlCleanupSchemasTypesInternal();
 #endif
 #ifdef LIBXML_RELAXNG_ENABLED
-    xmlCleanupRelaxNGInternal();
+	xmlCleanupRelaxNGInternal();
 #endif
 
-    xmlCleanupDictInternal();
-    xmlCleanupRandom();
-    xmlCleanupGlobalsInternal();
-    xmlCleanupThreadsInternal();
+	xmlCleanupDictInternal();
+	xmlCleanupRandom();
+	xmlCleanupGlobalsInternal();
+	xmlCleanupThreadsInternal();
 
-    /*
-     * Must come after all cleanup functions that call xmlFree which
-     * uses xmlMemMutex in debug mode.
-     */
-    xmlCleanupMemoryInternal();
+	/*
+	 * Must come after all cleanup functions that call xmlFree which
+	 * uses xmlMemMutex in debug mode.
+	 */
+	xmlCleanupMemoryInternal();
 
-    xmlParserInitialized = 0;
+	xmlParserInitialized = 0;
 
-    /*
-     * This is a bit sketchy but should make reinitialization work.
-     */
+	/*
+	 * This is a bit sketchy but should make reinitialization work.
+	 */
 #ifdef HAVE_POSIX_THREADS
-    {
-        pthread_once_t tmp = PTHREAD_ONCE_INIT;
-        memcpy(&onceControl, &tmp, sizeof(tmp));
-    }
+	{
+		pthread_once_t tmp = PTHREAD_ONCE_INIT;
+		memcpy(&onceControl, &tmp, sizeof(tmp));
+	}
 #elif defined(HAVE_WIN32_THREADS)
-    {
-        INIT_ONCE tmp = INIT_ONCE_STATIC_INIT;
-        memcpy(&onceControl, &tmp, sizeof(tmp));
-    }
+	{
+		INIT_ONCE tmp = INIT_ONCE_STATIC_INIT;
+		memcpy(&onceControl, &tmp, sizeof(tmp));
+	}
 #else
-    onceControl = 0;
+	onceControl = 0;
 #endif
 }
 
-#if defined(HAVE_FUNC_ATTRIBUTE_DESTRUCTOR) && \
-    !defined(LIBXML_THREAD_ALLOC_ENABLED) && \
-    !defined(LIBXML_STATIC) && \
-    !defined(_WIN32)
-static void
-ATTRIBUTE_DESTRUCTOR
-xmlDestructor(void) {
-    /*
-     * Calling custom deallocation functions in a destructor can cause
-     * problems, for example with Nokogiri.
-     */
-    if (xmlFree == free)
-        xmlCleanupParser();
+#if defined(HAVE_FUNC_ATTRIBUTE_DESTRUCTOR) && !defined(LIBXML_THREAD_ALLOC_ENABLED) \
+	&& !defined(LIBXML_STATIC) && !defined(_WIN32)
+static void ATTRIBUTE_DESTRUCTOR xmlDestructor(void) {
+	/*
+	 * Calling custom deallocation functions in a destructor can cause
+	 * problems, for example with Nokogiri.
+	 */
+	if (xmlFree == free) {
+		xmlCleanupParser();
+	}
 }
 #endif

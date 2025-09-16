@@ -1,0 +1,63 @@
+interface XML_Link {
+	fn void* get_data(XML_Link* lk);
+}
+alias XML_Link_Ptr = XML_Link*;
+
+interface XML_List {
+	fn void delete();
+
+	/* Basic Operators */
+	fn void*     search(void* data);
+	fn void*     reverse_search(void* data);
+	fn int       insert(void* data);
+	fn int       append(void* data);
+	fn int       remove_first(void* data);
+	fn int       remove_last(void* data);
+	fn int       remove_all(void* data);
+	fn void      clear();
+	fn int       empty();
+	fn XML_Link* front();
+	fn XML_Link* end();
+	fn int       size();
+	fn void      pop_front();
+	fn void      pop_back();
+	fn int       push_front(void* data);
+	fn int       push_back(void* data);
+
+	/* Advanced Operators */
+	fn void      reverse();
+	fn void      sort();
+	fn void      walk(XML_List_Walker walker, void* user);
+	fn void      reverse_walk(XML_List_Walker walker, void* user);
+	fn void      merge(XML_List* other);
+	fn XML_List* duplicate();
+	fn int       copy(XML_List* old);
+}
+alias XML_List_Ptr = XML_List*;
+
+/*
+	Callback function used to free data from a list
+
+	@param lk : "the data to deallocate"
+*/
+alias XML_List_Deallocator = fn void(XML_Link* lk);
+
+/*
+	Callback function used to compare 2 data
+
+	@param [in] data0 : "the first data"
+	@param [in] data1 : "the second data"
+	@return "0 is equality, -1 or 1 otherwise depending on the ordering"
+*/
+alias XML_List_Data_Compare = fn int(void* data0, void* data1);
+
+/*
+	Callback function used when walking a list with `XML_List_Walk`
+
+	@param [in] data : "the data found in the list"
+	@param user : "extra user provided data to the walker"
+	@return "0 to stop walking the list, 1 otherwise"
+*/
+alias XML_List_Walker = fn int(void* data, void* user);
+
+fn XML_List* xml_list_create(XML_List_Deallocator deallocator, XML_List_Data_Compare compare);

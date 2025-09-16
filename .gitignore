@@ -68,3 +68,6 @@ Makefile.in
 # Meson
 builddir
 installdir
+
+# C3
+obj

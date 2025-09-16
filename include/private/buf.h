@@ -1,6 +1,8 @@
 #ifndef XML_BUF_H_PRIVATE__
 #define XML_BUF_H_PRIVATE__
 
+#include "libxml.h"
+
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
