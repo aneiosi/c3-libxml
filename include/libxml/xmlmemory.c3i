@@ -1,0 +1,105 @@
+/*
+	Signature for a malloc() implementation
+
+	@param size : the size requested in bytes
+
+	@return : a pointer to the newly allocated block or NULL in case of error
+*/
+alias XML_Malloc = fn void*(usz size);
+
+/*
+	Signature for a realloc() implementation
+
+	@param mem : an already allocated block of memory
+	@param size : the new size requested in bytes
+
+	@return : a pointer to the newly reallocated block or NULL in case of error
+*/
+alias XML_Realloc = fn void*(void* mem, usz size);
+
+/*
+	Signature for a free() implementation
+
+	@param mem : an already allocated block of memory
+*/
+alias XML_Free = fn void(void* mem);
+
+/*
+	Signature for a strdup() implementation
+
+	@param [in] str : a zero-terminated string
+
+	@return : the copy of the string or NULL in case of error
+*/
+alias XML_Str_Dup = fn char*(ZString str);
+
+// In general the memory allocation entry points are not kept
+// thread specific but this can be overridden by LIBXML_THREAD_ALLOC_ENABLED
+//    - xmlMalloc
+//    - xmlRealloc
+//    - xmlMemStrdup
+//    - xmlFree
+
+	fn XML_Malloc*  __xmlMalloc()    @if($defined(LIBXML_THREAD_ALLOC_ENABLED));
+	fn XML_Realloc* __xmlRealloc()   @if($defined(LIBXML_THREAD_ALLOC_ENABLED));
+	fn XML_Free*    __xmlFree()      @if($defined(LIBXML_THREAD_ALLOC_ENABLED));
+	fn XML_Str_Dup* __xmlMemStrdup() @if($defined(LIBXML_THREAD_ALLOC_ENABLED));
+
+	// $if $defined(XML_GLOBALS_NO_REDEFINITION):
+
+		macro xmlMalloc(size) {
+			return (*__xmlMalloc())(size);
+		}
+
+		macro xmlRealloc(mem, size) {
+			return (*__xmlRealloc())(mem, size);
+		}
+
+		macro xmlFree(mem) {
+			(*__xmlFree())(mem);
+		}
+
+		macro xmlMemStrdup(str) {
+			return (*__xmlMemStrdup())(str);
+		}
+
+	// $endif
+
+// $else
+
+	// // The variable holding the libxml malloc() implementation
+	// extern XML_Malloc  xmlMalloc;
+
+	// // The variable holding the libxml realloc() implementation
+	// extern XML_Realloc xmlRealloc;
+
+	// // The variable holding the libxml free() implementation
+	// extern XML_Free    xmlFree;
+
+	// // The variable holding the libxml strdup() implementation
+	// extern XML_Str_Dup xmlMemStrdup;
+
+// $endif
+
+// The way to overload the existing functions.
+fn int xmlMemSetup(
+	XML_Free    free_fn,
+	XML_Malloc  malloc_fn,
+	XML_Realloc realloc_fn,
+	XML_Str_Dup strdup_fn
+);
+fn int xmlMemGet(
+	XML_Free*    free_fn,
+	XML_Malloc*  malloc_fn,
+	XML_Realloc* realloc_fn,
+	XML_Str_Dup* strdup_fn
+);
+
+// These are specific to the XML debug memory wrapper.
+fn usz   xmlMemSize(void* ptr);
+fn int   xmlMemUsed();
+fn int   xmlMemBlocks();
+fn void* xmlMemMalloc(usz size);
+fn void* xmlMemRealloc(void* ptr, usz size);
+fn void  xmlMemFree(void* ptr);
+fn char* xmlMemoryStrdup(ZString str);

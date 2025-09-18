@@ -1,10 +1,9 @@
-#include <Python.h>
+#include <python3.13/Python.h>
 #include <libxml/tree.h>
 #include <libxml/parser.h>
 #include <libxml/parserInternals.h>
 #include <libxml/catalog.h>
 #include <libxml/threads.h>
-#include <libxml/nanohttp.h>
 #include <libxml/uri.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
