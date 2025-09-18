@@ -15,8 +15,6 @@
 #define IN_LIBXML
 #include <libxml/xmlstring.h>
 
-#include "libxml.h"
-#include "private/parser.h"
 #include "private/string.h"
 
 #include <libxml/parserInternals.h>

@@ -11,8 +11,6 @@
 #define IN_LIBXML
 #include <libxml/uri.h>
 
-#include "libxml.h"
-#include "private/error.h"
 #include "private/memory.h"
 
 #include <libxml/xmlerror.h>
