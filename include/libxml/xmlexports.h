@@ -16,13 +16,8 @@
  */
 
 #if (defined(_WIN32) || defined(__CYGWIN__)) && !defined(LIBXML_STATIC)
-	#if defined(IN_LIBXML)
-		#define XMLPUBFUN __declspec(dllexport)
-		#define XMLPUBVAR __declspec(dllexport) extern
-	#else
-		#define XMLPUBFUN __declspec(dllimport)
-		#define XMLPUBVAR __declspec(dllimport) extern
-	#endif
+	#define XMLPUBFUN __declspec(dllexport)
+	#define XMLPUBVAR __declspec(dllexport) extern
 #else /* not Windows */
 	#define XMLPUBFUN
 	#define XMLPUBVAR extern
