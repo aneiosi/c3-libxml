@@ -203,7 +203,6 @@ static char* xmlPosixStrdup(const char* cur) {
 
 xmlFreeFunc                                   xmlFree         = free;
 xmlMallocFunc                                 xmlMalloc       = malloc;
-xmlMallocFunc                                 xmlMallocAtomic = malloc;
 xmlReallocFunc                                xmlRealloc      = realloc;
 xmlStrdupFunc                                 xmlMemStrdup    = xmlPosixStrdup;
 

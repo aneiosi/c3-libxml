@@ -3,6 +3,8 @@
 
 #ifdef LIBXML_CATALOG_ENABLED
 
+	#include "libxml.h"
+
 XML_HIDDEN void xmlInitCatalogInternal(void);
 XML_HIDDEN void xmlCleanupCatalogInternal(void);
 

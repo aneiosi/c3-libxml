@@ -1,6 +1,8 @@
 #ifndef XML_DICT_H_PRIVATE__
 #define XML_DICT_H_PRIVATE__
 
+#include "libxml.h"
+
 #include <libxml/dict.h>
 
 /*

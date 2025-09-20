@@ -6,8 +6,6 @@
 #define IN_LIBXML
 #include <libxml/chvalid.h>
 
-#include "libxml.h"
-
 #include <stddef.h>
 
 /*

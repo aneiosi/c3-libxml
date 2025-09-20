@@ -1024,9 +1024,7 @@ struct _xmlIDCHashEntry {
 };
 
 /************************************************************************
- *									*
  *			Some predeclarations				*
- *									*
  ************************************************************************/
 
 static int xmlSchemaParseInclude(xmlSchemaParserCtxtPtr ctxt,
@@ -1078,9 +1076,7 @@ xmlSchemaParseAttributeGroupRef(xmlSchemaParserCtxtPtr pctxt,
 				xmlNodePtr node);
 
 /************************************************************************
- *									*
  *			Helper functions			        *
- *									*
  ************************************************************************/
 
 /**
@@ -9722,27 +9718,22 @@ xmlSchemaNewParserCtxtUseDict(const char *URL, xmlDictPtr dict)
     return (ret);
 }
 
-static int
-xmlSchemaCreatePCtxtOnVCtxt(xmlSchemaValidCtxtPtr vctxt)
-{
-    if (vctxt->pctxt == NULL) {
-        if (vctxt->schema != NULL)
-	    vctxt->pctxt =
-		xmlSchemaNewParserCtxtUseDict("*", vctxt->schema->dict);
-	else
-	    vctxt->pctxt = xmlSchemaNewParserCtxt("*");
+static int xmlSchemaCreatePCtxtOnVCtxt(xmlSchemaValidCtxtPtr vctxt) {
 	if (vctxt->pctxt == NULL) {
-	    VERROR_INT("xmlSchemaCreatePCtxtOnVCtxt",
+		if (vctxt->schema != NULL) { vctxt->pctxt = xmlSchemaNewParserCtxtUseDict("*", vctxt->schema->dict); }
+		else { vctxt->pctxt = xmlSchemaNewParserCtxt("*"); }
+
+		if (vctxt->pctxt == NULL) {
+			VERROR_INT("xmlSchemaCreatePCtxtOnVCtxt",
 		"failed to create a temp. parser context");
-	    return (-1);
-	}
+			return (-1);
+		}
+
 	/* TODO: Pass user data. */
-	xmlSchemaSetParserErrors(vctxt->pctxt, vctxt->error,
-	    vctxt->warning, vctxt->errCtxt);
-	xmlSchemaSetParserStructuredErrors(vctxt->pctxt, vctxt->serror,
-	    vctxt->errCtxt);
-    }
-    return (0);
+	xmlSchemaSetParserErrors(vctxt->pctxt, vctxt->error, vctxt->warning, vctxt->errCtxt);
+	xmlSchemaSetParserStructuredErrors(vctxt->pctxt, vctxt->serror, vctxt->errCtxt);
+	}
+	return (0);
 }
 
 /**
@@ -10000,307 +9991,304 @@ xmlSchemaBuildAbsoluteURI(xmlDictPtr dict, const xmlChar* location,
     return(NULL);
 }
 
-
-
 /**
  * Parse an included (and to-be-redefined) XML schema document.
  *
- * @param pctxt  a schema validation context
- * @param type  import or include or redefine
- * @param schemaLocation  schema location
- * @param schemaDoc  schema document
- * @param schemaBuffer  document buffer
- * @param schemaBufferLen  buffer size
- * @param invokingNode  invoking node
- * @param sourceTargetNamespace  source target namespace
- * @param importNamespace  import namespace
- * @param bucket  bucket
- * @returns 0 on success, a positive error code on errors and
- *         -1 in case of an internal or API error.
+ * @param pctxt : a schema validation context
+ * @param type : import or include or redefine
+ * @param schemaLocation : schema location
+ * @param schemaDoc : schema document
+ * @param schemaBuffer : document buffer
+ * @param schemaBufferLen : buffer size
+ * @param invokingNode : invoking node
+ * @param sourceTargetNamespace : source target namespace
+ * @param importNamespace : import namespace
+ * @param bucket : bucket
+ * @return : 0 on success, a positive error code on errors and -1 in case of an internal or API error.
  */
+static int xmlSchemaAddSchemaDoc(
+	xmlSchemaParserCtxtPtr pctxt,
+	int                    type,
+	const xmlChar*         schemaLocation,
+	xmlDocPtr              schemaDoc,
+	const char*            schemaBuffer,
+	int                    schemaBufferLen,
+	xmlNodePtr             invokingNode,
+	const xmlChar*         sourceTargetNamespace,
+	const xmlChar*         importNamespace,
+	xmlSchemaBucketPtr*    bucket
+) {
+	const xmlChar*             targetNamespace = NULL;
+	xmlSchemaSchemaRelationPtr relation        = NULL;
+	xmlDocPtr                  doc             = NULL;
+	int                        res             = 0;
+	int                        err             = 0;
+	int                        located         = 0;
+	int                        preserveDoc     = 0;
+	xmlSchemaBucketPtr         bkt             = NULL;
 
-static int
-xmlSchemaAddSchemaDoc(xmlSchemaParserCtxtPtr pctxt,
-		int type,
-		const xmlChar *schemaLocation,
-		xmlDocPtr schemaDoc,
-		const char *schemaBuffer,
-		int schemaBufferLen,
-		xmlNodePtr invokingNode,
-		const xmlChar *sourceTargetNamespace,
-		const xmlChar *importNamespace,
-		xmlSchemaBucketPtr *bucket)
-{
-    const xmlChar *targetNamespace = NULL;
-    xmlSchemaSchemaRelationPtr relation = NULL;
-    xmlDocPtr doc = NULL;
-    int res = 0, err = 0, located = 0, preserveDoc = 0;
-    xmlSchemaBucketPtr bkt = NULL;
+	if (bucket != NULL) { *bucket = NULL; }
 
-    if (bucket != NULL)
-	*bucket = NULL;
+	switch (type) {
+		case XML_SCHEMA_SCHEMA_IMPORT:
 
-    switch (type) {
-	case XML_SCHEMA_SCHEMA_IMPORT:
-	case XML_SCHEMA_SCHEMA_MAIN:
-	    err = XML_SCHEMAP_SRC_IMPORT;
-	    break;
-	case XML_SCHEMA_SCHEMA_INCLUDE:
-	    err = XML_SCHEMAP_SRC_INCLUDE;
-	    break;
-	case XML_SCHEMA_SCHEMA_REDEFINE:
-	    err = XML_SCHEMAP_SRC_REDEFINE;
-	    break;
-    }
+		case XML_SCHEMA_SCHEMA_MAIN:
+			err = XML_SCHEMAP_SRC_IMPORT;
+			break;
 
+		case XML_SCHEMA_SCHEMA_INCLUDE:
+			err = XML_SCHEMAP_SRC_INCLUDE;
+			break;
 
-    /* Special handling for the main schema:
-    * skip the location and relation logic and just parse the doc.
-    * We need just a bucket to be returned in this case.
-    */
-    if ((type == XML_SCHEMA_SCHEMA_MAIN) || (! WXS_HAS_BUCKETS(pctxt)))
-	goto doc_load;
-
-    /* Note that we expect the location to be an absolute URI. */
-    if (schemaLocation != NULL) {
-	bkt = xmlSchemaGetSchemaBucket(pctxt, schemaLocation);
-	if ((bkt != NULL) &&
-	    (pctxt->constructor->bucket == bkt)) {
-	    /* Report self-imports/inclusions/redefinitions. */
-
-	    xmlSchemaCustomErr(ACTXT_CAST pctxt, err,
-		invokingNode, NULL,
-		"The schema must not import/include/redefine itself",
-		NULL, NULL);
-	    goto exit;
+		case XML_SCHEMA_SCHEMA_REDEFINE:
+			err = XML_SCHEMAP_SRC_REDEFINE;
+			break;
 	}
-    }
-    /*
-    * Create a relation for the graph of schemas.
-    */
-    relation = xmlSchemaSchemaRelationCreate();
-    if (relation == NULL)
-	return(-1);
-    xmlSchemaSchemaRelationAddChild(pctxt->constructor->bucket,
-	relation);
-    relation->type = type;
 
-    /*
-    * Save the namespace import information.
-    */
-    if (WXS_IS_BUCKET_IMPMAIN(type)) {
-	relation->importNamespace = importNamespace;
-	if (schemaLocation == NULL) {
-	    /*
-	    * No location; this is just an import of the namespace.
-	    * Note that we don't assign a bucket to the relation
-	    * in this case.
-	    */
-	    goto exit;
-	}
-	targetNamespace = importNamespace;
-    }
 
-    /* Did we already fetch the doc? */
-    if (bkt != NULL) {
-	if ((WXS_IS_BUCKET_IMPMAIN(type)) && (! bkt->imported)) {
-	    /*
-	    * We included/redefined and then try to import a schema,
-	    * but the new location provided for import was different.
-	    */
-	    if (schemaLocation == NULL)
-		schemaLocation = BAD_CAST "in_memory_buffer";
-	    if (!xmlStrEqual(schemaLocation,
-		bkt->schemaLocation)) {
-		xmlSchemaCustomErr(ACTXT_CAST pctxt, err,
-		    invokingNode, NULL,
-		    "The schema document '%s' cannot be imported, since "
-		    "it was already included or redefined",
-		    schemaLocation, NULL);
-		goto exit;
-	    }
-	} else if ((! WXS_IS_BUCKET_IMPMAIN(type)) && (bkt->imported)) {
-	    /*
-	    * We imported and then try to include/redefine a schema,
-	    * but the new location provided for the include/redefine
-	    * was different.
-	    */
-	    if (schemaLocation == NULL)
-		schemaLocation = BAD_CAST "in_memory_buffer";
-	    if (!xmlStrEqual(schemaLocation,
-		bkt->schemaLocation)) {
-		xmlSchemaCustomErr(ACTXT_CAST pctxt, err,
-		    invokingNode, NULL,
-		    "The schema document '%s' cannot be included or "
-		    "redefined, since it was already imported",
-		    schemaLocation, NULL);
-		goto exit;
-	    }
-	}
-    }
+	/* Special handling for the main schema:
+	 * skip the location and relation logic and just parse the doc.
+	 * We need just a bucket to be returned in this case.
+	 */
+	if ((type == XML_SCHEMA_SCHEMA_MAIN) || (! WXS_HAS_BUCKETS(pctxt))) { goto doc_load; }
 
-    if (WXS_IS_BUCKET_IMPMAIN(type)) {
-	/*
-	* Given that the schemaLocation [attribute] is only a hint, it is open
-	* to applications to ignore all but the first <import> for a given
-	* namespace, regardless of the `actual value` of schemaLocation, but
-	* such a strategy risks missing useful information when new
-	* schemaLocations are offered.
-	*
-	* We will use the first <import> that comes with a location.
-	* Further <import>s *with* a location, will result in an error.
-	* TODO: Better would be to just report a warning here, but
-	* we'll try it this way until someone complains.
-	*
-	* Schema Document Location Strategy:
-	* 3 Based on the namespace name, identify an existing schema document,
-	* either as a resource which is an XML document or a <schema> element
-	* information item, in some local schema repository;
-	* 5 Attempt to resolve the namespace name to locate such a resource.
-	*
-	* NOTE: (3) and (5) are not supported.
-	*/
-	if (bkt != NULL) {
-	    relation->bucket = bkt;
-	    goto exit;
-	}
-	bkt = xmlSchemaGetSchemaBucketByTNS(pctxt,
-	    importNamespace, 1);
-
-	if (bkt != NULL) {
-	    relation->bucket = bkt;
-	    if (bkt->schemaLocation == NULL) {
-		/* First given location of the schema; load the doc. */
-		bkt->schemaLocation = schemaLocation;
-	    } else {
-		if (!xmlStrEqual(schemaLocation,
-		    bkt->schemaLocation)) {
-		    /*
-		    * Additional location given; just skip it.
-		    * URGENT TODO: We should report a warning here.
-		    * res = XML_SCHEMAP_SRC_IMPORT;
-		    */
-		    if (schemaLocation == NULL)
-			schemaLocation = BAD_CAST "in_memory_buffer";
-
-		    xmlSchemaCustomWarning(ACTXT_CAST pctxt,
-			XML_SCHEMAP_WARN_SKIP_SCHEMA,
-			invokingNode, NULL,
-			"Skipping import of schema located at '%s' for the "
-			"namespace '%s', since this namespace was already "
-			"imported with the schema located at '%s'",
-			schemaLocation, importNamespace, bkt->schemaLocation);
+	// Note: we expect the location to be an absolute URI
+	if (schemaLocation != NULL) {
+		bkt = xmlSchemaGetSchemaBucket(pctxt, schemaLocation);
+		if ((bkt != NULL) && (pctxt->constructor->bucket == bkt)) {
+			// Report self-imports/inclusions/redefinitions
+			xmlSchemaCustomErr(
+				ACTXT_CAST pctxt,
+				err,
+				invokingNode,
+				NULL,
+				"The schema must not import/include/redefine itself",
+				NULL,
+				NULL
+			);
+			goto exit;
 		}
-		goto exit;
-	    }
 	}
-	/*
-	* No bucket + first location: load the doc and create a
-	* bucket.
-	*/
-    } else {
-	/* <include> and <redefine> */
-	if (bkt != NULL) {
+	// Create a relation for the graph of schemas.
+	relation = xmlSchemaSchemaRelationCreate();
+	if (relation == NULL) { return (-1); }
+	xmlSchemaSchemaRelationAddChild(pctxt->constructor->bucket, relation);
+	relation->type = type;
 
-	    if ((bkt->origTargetNamespace == NULL) &&
-		(bkt->targetNamespace != sourceTargetNamespace)) {
-		xmlSchemaBucketPtr chamel;
-
-		/*
-		* Chameleon include/redefine: skip loading only if it was
-		* already build for the targetNamespace of the including
-		* schema.
-		*/
-		/*
-		* URGENT TODO: If the schema is a chameleon-include then copy
-		* the components into the including schema and modify the
-		* targetNamespace of those components, do nothing otherwise.
-		* NOTE: This is currently worked-around by compiling the
-		* chameleon for every distinct including targetNamespace; thus
-		* not performant at the moment.
-		* TODO: Check when the namespace in wildcards for chameleons
-		* needs to be converted: before we built wildcard intersections
-		* or after.
-		*   Answer: after!
-		*/
-		chamel = xmlSchemaGetChameleonSchemaBucket(pctxt,
-		    schemaLocation, sourceTargetNamespace);
-		if (chamel != NULL) {
-		    /* A fitting chameleon was already parsed; NOP. */
-		    relation->bucket = chamel;
-		    goto exit;
+	// Save the namespace import information.
+	if (WXS_IS_BUCKET_IMPMAIN(type)) {
+		relation->importNamespace = importNamespace;
+		if (schemaLocation == NULL) {
+			/*
+			 * No location; this is just an import of the namespace.
+			 * Note that we don't assign a bucket to the relation in this case.
+			 */
+			goto exit;
 		}
-		/*
-		* We need to parse the chameleon again for a different
-		* targetNamespace.
-		* CHAMELEON TODO: Optimize this by only parsing the
-		* chameleon once, and then copying the components to
-		* the new targetNamespace.
-		*/
-		bkt = NULL;
-	    } else {
-		relation->bucket = bkt;
-		goto exit;
-	    }
+		targetNamespace = importNamespace;
 	}
-    }
-    if ((bkt != NULL) && (bkt->doc != NULL)) {
-	PERROR_INT("xmlSchemaAddSchemaDoc",
-	    "trying to load a schema doc, but a doc is already "
-	    "assigned to the schema bucket");
-	goto exit_failure;
-    }
+
+	// Did we already fetch the doc?
+	if (bkt != NULL) {
+		if ((WXS_IS_BUCKET_IMPMAIN(type)) && (! bkt->imported)) {
+			// We included/redefined and then tried to import a schema, but the new location provided for import was different.
+			if (schemaLocation == NULL) { schemaLocation = BAD_CAST "in_memory_buffer"; }
+
+			if (!xmlStrEqual(schemaLocation, bkt->schemaLocation)) {
+				xmlSchemaCustomErr(
+					ACTXT_CAST pctxt,
+					err,
+					invokingNode,
+					NULL,
+					"The schema document '%s' cannot be imported, since it was already included or redefined",
+					schemaLocation,
+					NULL
+				);
+				goto exit;
+			}
+		}
+		else if ((! WXS_IS_BUCKET_IMPMAIN(type)) && (bkt->imported)) {
+			// We imported and then tried to include/redefine a schema, but the new location provided for the include/redefine was different.
+			if (schemaLocation == NULL) { schemaLocation = BAD_CAST "in_memory_buffer"; }
+
+			if (!xmlStrEqual(schemaLocation, bkt->schemaLocation)) {
+				xmlSchemaCustomErr(
+					ACTXT_CAST pctxt,
+					err,
+					invokingNode,
+					NULL,
+					"The schema document '%s' cannot be included or redefined, since it was already imported",
+					schemaLocation,
+					NULL
+				);
+				goto exit;
+			}
+		}
+	}
+
+	if (WXS_IS_BUCKET_IMPMAIN(type)) {
+		/*
+		* Given that the schemaLocation [attribute] is only a hint, it is open
+		* to applications to ignore all but the first <import> for a given
+		* namespace, regardless of the `actual value` of schemaLocation, but
+		* such a strategy risks missing useful information when new
+		* schemaLocations are offered.
+		*
+		* We will use the first <import> that comes with a location.
+		* Further <import>s *with* a location, will result in an error.
+		* TODO: Better would be to just report a warning here, but
+		* we'll try it this way until someone complains.
+		*
+		* Schema Document Location Strategy:
+		* 3 Based on the namespace name, identify an existing schema document,
+		* either as a resource which is an XML document or a <schema> element
+		* information item, in some local schema repository;
+		* 5 Attempt to resolve the namespace name to locate such a resource.
+		*
+		* NOTE: (3) and (5) are not supported.
+		*/
+		if (bkt != NULL) {
+			relation->bucket = bkt;
+			goto exit;
+		}
+
+		bkt = xmlSchemaGetSchemaBucketByTNS(pctxt, importNamespace, 1);
+		if (bkt != NULL) {
+			relation->bucket = bkt;
+			if (bkt->schemaLocation == NULL) {
+				// First given location of the schema; load the doc
+				bkt->schemaLocation = schemaLocation;
+			}
+			else {
+				if (!xmlStrEqual(schemaLocation, bkt->schemaLocation)) {
+					/*
+					* Additional location given; just skip it.
+					* URGENT TODO: We should report a warning here.
+					* res = XML_SCHEMAP_SRC_IMPORT;
+					*/
+					if (schemaLocation == NULL) { schemaLocation = BAD_CAST "in_memory_buffer"; }
+
+					xmlSchemaCustomWarning(
+						ACTXT_CAST pctxt,
+						XML_SCHEMAP_WARN_SKIP_SCHEMA,
+						invokingNode,
+						NULL,
+						"Skipping import of schema located at '%s' for the "
+							"namespace '%s', since this namespace was already "
+							"imported with the schema located at '%s'",
+						schemaLocation,
+						importNamespace,
+						bkt->schemaLocation
+					);
+				}
+				goto exit;
+			}
+		}
+	}
+	// No bucket + first location: load the doc and create a bucket
+	else {
+		/* <include> and <redefine> */
+		if (bkt != NULL) {
+			if ((bkt->origTargetNamespace == NULL) && (bkt->targetNamespace != sourceTargetNamespace)) {
+				/*
+				* Chameleon include/redefine: skip loading only if it was
+				* already build for the targetNamespace of the including
+				* schema.
+				*/
+				/*
+				* URGENT TODO: If the schema is a chameleon-include then copy
+				* the components into the including schema and modify the
+				* targetNamespace of those components, do nothing otherwise.
+				* NOTE: This is currently worked-around by compiling the
+				* chameleon for every distinct including targetNamespace; thus
+				* not performant at the moment.
+				* TODO: Check when the namespace in wildcards for chameleons
+				* needs to be converted: before we built wildcard intersections
+				* or after.
+				*   Answer: after!
+				*/
+				xmlSchemaBucketPtr chamel = xmlSchemaGetChameleonSchemaBucket(
+					pctxt,
+					schemaLocation,
+					sourceTargetNamespace
+				);
+				if (chamel != NULL) {
+					// A fitting chameleon was already parsed; NOP
+					relation->bucket = chamel;
+					goto exit;
+				}
+				/*
+				 * We need to parse the chameleon again for a different targetNamespace.
+				 * CHAMELEON TODO: Optimize this by only parsing the chameleon once, and then copying the
+				 * components to the new targetNamespace.
+				 */
+				bkt = NULL;
+			}
+			else {
+				relation->bucket = bkt;
+				goto exit;
+			}
+		}
+	}
+	if ((bkt != NULL) && (bkt->doc != NULL)) {
+		PERROR_INT(
+			"xmlSchemaAddSchemaDoc",
+			"trying to load a schema doc, but a doc is already assigned to the schema bucket"
+		);
+		goto exit_failure;
+	}
 
 doc_load:
-    /*
-    * Load the document.
-    */
-    if (schemaDoc != NULL) {
-	doc = schemaDoc;
-	/* Don' free this one, since it was provided by the caller. */
-	preserveDoc = 1;
-	/* TODO: Does the context or the doc hold the location? */
-	if (schemaDoc->URL != NULL)
-	    schemaLocation = xmlDictLookup(pctxt->dict,
-		schemaDoc->URL, -1);
-        else
-	    schemaLocation = BAD_CAST "in_memory_buffer";
-    } else if ((schemaLocation != NULL) || (schemaBuffer != NULL)) {
-	xmlParserCtxtPtr parserCtxt;
-
-	parserCtxt = xmlNewParserCtxt();
-	if (parserCtxt == NULL) {
-	    xmlSchemaPErrMemory(NULL);
-	    goto exit_failure;
+	// Load the document
+	if (schemaDoc != NULL) {
+		doc = schemaDoc;
+		// Don't free this one, since it was provided by the caller
+		preserveDoc = 1;
+		// TODO: Does the context or the doc hold the location?
+		if (schemaDoc->URL != NULL) {
+			schemaLocation = xmlDictLookup(pctxt->dict, schemaDoc->URL, -1);
+		}
+		else { schemaLocation = BAD_CAST "in_memory_buffer"; }
 	}
+	else if ((schemaLocation != NULL) || (schemaBuffer != NULL)) {
+		xmlParserCtxtPtr parserCtxt;
 
-        if (pctxt->serror != NULL)
-            xmlCtxtSetErrorHandler(parserCtxt, pctxt->serror, pctxt->errCtxt);
-        if (pctxt->resourceLoader != NULL)
-            xmlCtxtSetResourceLoader(parserCtxt, pctxt->resourceLoader,
-                                     pctxt->resourceCtxt);
+		parserCtxt = xmlNewParserCtxt();
+		if (parserCtxt == NULL) {
+			xmlSchemaPErrMemory(NULL);
+			goto exit_failure;
+		}
 
-	if ((pctxt->dict != NULL) && (parserCtxt->dict != NULL)) {
-	    /*
-	    * TODO: Do we have to burden the schema parser dict with all
-	    * the content of the schema doc?
-	    */
-	    xmlDictFree(parserCtxt->dict);
-	    parserCtxt->dict = pctxt->dict;
-	    xmlDictReference(parserCtxt->dict);
-	}
-	if (schemaLocation != NULL) {
-	    /* Parse from file. */
-	    doc = xmlCtxtReadFile(parserCtxt, (const char *) schemaLocation,
-		NULL, SCHEMAS_PARSE_OPTIONS);
-	} else if (schemaBuffer != NULL) {
-	    /* Parse from memory buffer. */
-	    doc = xmlCtxtReadMemory(parserCtxt, schemaBuffer, schemaBufferLen,
-		NULL, NULL, SCHEMAS_PARSE_OPTIONS);
-	    schemaLocation = BAD_CAST "in_memory_buffer";
-	    if (doc != NULL)
-		doc->URL = xmlStrdup(schemaLocation);
-	}
+		if (pctxt->serror != NULL) {
+				xmlCtxtSetErrorHandler(parserCtxt, pctxt->serror, pctxt->errCtxt);
+		}
+		if (pctxt->resourceLoader != NULL) {
+			xmlCtxtSetResourceLoader(parserCtxt, pctxt->resourceLoader, pctxt->resourceCtxt);
+		}
+
+		if ((pctxt->dict != NULL) && (parserCtxt->dict != NULL)) {
+			// TODO: Do we have to burden the schema parser dict with all the content of the schema doc?
+			xmlDictFree(parserCtxt->dict);
+			parserCtxt->dict = pctxt->dict;
+			xmlDictReference(parserCtxt->dict);
+		}
+		if (schemaLocation != NULL) {
+			// Parse from file
+			doc = xmlCtxtReadFile(
+				parserCtxt,
+				(const char*) schemaLocation,
+				NULL,
+				SCHEMAS_PARSE_OPTIONS
+			);
+		}
+		else if (schemaBuffer != NULL) {
+				/* Parse from memory buffer. */
+				doc = xmlCtxtReadMemory(parserCtxt, schemaBuffer, schemaBufferLen,
+			NULL, NULL, SCHEMAS_PARSE_OPTIONS);
+				schemaLocation = BAD_CAST "in_memory_buffer";
+				if (doc != NULL)
+			doc->URL = xmlStrdup(schemaLocation);
+		}
 	/*
 	* For <import>:
 	* 2.1 The referent is (a fragment of) a resource which is an
@@ -19335,40 +19323,35 @@ xmlSchemaCheckElemPropsCorrect(xmlSchemaParserCtxtPtr pctxt,
  * @param ctxt  a schema parser context
  * @param elemDecl  the element declaration
  */
-static void
-xmlSchemaCheckElemSubstGroup(xmlSchemaParserCtxtPtr ctxt,
-			     xmlSchemaElementPtr elemDecl)
-{
-    if ((WXS_SUBST_HEAD(elemDecl) == NULL) ||
-	/* SPEC (1) "Its {abstract} is false." */
-	(elemDecl->flags & XML_SCHEMAS_ELEM_ABSTRACT))
-	return;
-    {
-	xmlSchemaElementPtr head;
-	xmlSchemaTypePtr headType, type;
-	int set, methSet;
-	/*
-	* SPEC (2) "It is validly substitutable for HEAD subject to HEAD's
-	* {disallowed substitutions} as the blocking constraint, as defined in
-	* Substitution Group OK (Transitive) ($3.3.6)."
-	*/
-	for (head = WXS_SUBST_HEAD(elemDecl); head != NULL;
-	    head = WXS_SUBST_HEAD(head)) {
-	    set = 0;
-	    methSet = 0;
-	    /*
-	    * The blocking constraints.
-	    */
-	    if (head->flags & XML_SCHEMAS_ELEM_BLOCK_SUBSTITUTION)
-		continue;
-	    headType = head->subtypes;
-	    type = elemDecl->subtypes;
-	    if (headType == type)
-		goto add_member;
-	    if (head->flags & XML_SCHEMAS_ELEM_BLOCK_RESTRICTION)
-		set |= XML_SCHEMAS_TYPE_BLOCK_RESTRICTION;
-	    if (head->flags & XML_SCHEMAS_ELEM_BLOCK_EXTENSION)
-		set |= XML_SCHEMAS_TYPE_BLOCK_EXTENSION;
+static void xmlSchemaCheckElemSubstGroup(xmlSchemaParserCtxtPtr ctxt, xmlSchemaElementPtr elemDecl) {
+	if (
+		(WXS_SUBST_HEAD(elemDecl) == NULL) ||
+		(elemDecl->flags & XML_SCHEMAS_ELEM_ABSTRACT) // SPEC (1) "Its {abstract} is false."
+	) {
+		return;
+	}
+
+	{
+		xmlSchemaElementPtr head;
+		xmlSchemaTypePtr headType;
+		xmlSchemaTypePtr type;
+		int methSet;
+		int set;
+		/*
+		* SPEC (2) "It is validly substitutable for HEAD subject to HEAD's
+		* {disallowed substitutions} as the blocking constraint, as defined in
+		* Substitution Group OK (Transitive) ($3.3.6)."
+		*/
+		for (head = WXS_SUBST_HEAD(elemDecl); head != NULL; head = WXS_SUBST_HEAD(head)) {
+			set = 0;
+			methSet = 0;
+
+			if (head->flags & XML_SCHEMAS_ELEM_BLOCK_SUBSTITUTION) { continue; }
+			headType = head->subtypes;
+			type = elemDecl->subtypes;
+			if (headType == type) { goto add_member; }
+			if (head->flags & XML_SCHEMAS_ELEM_BLOCK_RESTRICTION) { set |= XML_SCHEMAS_TYPE_BLOCK_RESTRICTION; }
+			if (head->flags & XML_SCHEMAS_ELEM_BLOCK_EXTENSION) { set |= XML_SCHEMAS_TYPE_BLOCK_EXTENSION; }
 	    /*
 	    * SPEC: Substitution Group OK (Transitive) (2.3)
 	    * "The set of all {derivation method}s involved in the
@@ -19406,18 +19389,20 @@ xmlSchemaCheckElemSubstGroup(xmlSchemaParserCtxtPtr ctxt,
 	    type = elemDecl->subtypes->baseType;
 	    while (type != NULL) {
 		if (WXS_IS_COMPLEX(type)) {
-		    if ((type->flags &
-			    XML_SCHEMAS_TYPE_BLOCK_EXTENSION) &&
-			((set & XML_SCHEMAS_TYPE_BLOCK_EXTENSION) == 0))
-		    set |= XML_SCHEMAS_TYPE_BLOCK_EXTENSION;
-		    if ((type->flags &
+			if ((type->flags & XML_SCHEMAS_TYPE_BLOCK_EXTENSION) && ((set & XML_SCHEMAS_TYPE_BLOCK_EXTENSION) == 0)) {
+				set |= XML_SCHEMAS_TYPE_BLOCK_EXTENSION;
+			}
+			if ((type->flags &
 			    XML_SCHEMAS_TYPE_BLOCK_RESTRICTION) &&
 			((set & XML_SCHEMAS_TYPE_BLOCK_RESTRICTION) == 0))
 		    set |= XML_SCHEMAS_TYPE_BLOCK_RESTRICTION;
-		} else
-		    break;
-		if (type == headType)
-		    break;
+		}
+		else {
+			break;
+		}
+		if (type == headType) {
+			break;
+		}
 		type = type->baseType;
 	    }
 	    if ((set != 0) &&

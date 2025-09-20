@@ -18,11 +18,8 @@
 #define IN_LIBXML
 #include <libxml/list.h>
 
-#include "libxml.h"
-
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
-#include <stdlib.h>
 #include <string.h>
 
 /*

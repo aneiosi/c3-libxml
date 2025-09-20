@@ -1,6 +1,8 @@
 #ifndef XML_ENC_H_PRIVATE__
 #define XML_ENC_H_PRIVATE__
 
+#include "libxml.h"
+
 #include <libxml/encoding.h>
 #include <libxml/tree.h>
 
@@ -14,8 +16,7 @@ XML_HIDDEN xmlCharEncError xmlEncInputChunk(
 	int*                    inlen,
 	int                     flush
 );
-XML_HIDDEN xmlCharEncError
-							 xmlCharEncInput(xmlParserInputBuffer* input, size_t* sizeOut, int flush);
-XML_HIDDEN int xmlCharEncOutput(xmlOutputBuffer* output, int init);
+XML_HIDDEN xmlCharEncError xmlCharEncInput(xmlParserInputBuffer* input, size_t* sizeOut, int flush);
+XML_HIDDEN int             xmlCharEncOutput(xmlOutputBuffer* output, int init);
 
 #endif /* XML_ENC_H_PRIVATE__ */

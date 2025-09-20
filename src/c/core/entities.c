@@ -15,7 +15,6 @@
 #include <libxml/entities.h>
 
 #include "libxml.h"
-#include "private/entities.h"
 #include "private/error.h"
 #include "private/io.h"
 
@@ -26,7 +25,6 @@
 #include <libxml/xmlerror.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/xmlsave.h>
-#include <stdlib.h>
 #include <string.h>
 
 #ifndef SIZE_MAX

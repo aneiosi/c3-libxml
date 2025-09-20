@@ -4169,7 +4169,7 @@ static xmlChar* xmlParseAttValueInternal(
 	int      c, l, quote, entFlags, chunkSize;
 	int      inSpace = 1;
 	int      replaceEntities;
-	int      normalize   = (special & XML_SPECIAL_TYPE_MASK) != 0;
+	int      normalize   = (special & XML_SPECIAL_TYPE_MASK) > XML_ATTRIBUTE_CDATA;
 	int      attvalFlags = 0;
 
 	/* Always expand namespace URIs */
@@ -8844,8 +8844,12 @@ static xmlHashedString xmlParseAttribute2(
 	*alloc = (flags & XML_ATTVAL_ALLOC) != 0;
 
 #ifdef LIBXML_VALID_ENABLED
-	if ((ctxt->validate) && (ctxt->standalone) && (special & XML_SPECIAL_EXTERNAL)
-	    && (flags & XML_ATTVAL_NORM_CHANGE)) {
+	if (
+		(ctxt->validate) &&
+		(ctxt->standalone == 1) &&
+		(special & XML_SPECIAL_EXTERNAL) &&
+		(flags & XML_ATTVAL_NORM_CHANGE)
+	) {
 		xmlValidityError(
 			ctxt,
 			XML_DTD_NOT_STANDALONE,
